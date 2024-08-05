@@ -22,7 +22,7 @@ const io = new SocketIOServer(server);
 const SECRET_KEY = process.env.SECRET_KEY || "default_secret_key";
 const PORT = 9000;
 const PORT_SOCKET = 8003;
-const HOST = '192.168.1.26';
+const HOST = '192.168.1.20';
 app.use(cors(
     { origin: "*" }
 ));
@@ -251,9 +251,7 @@ app.put("/users/:userId/turn-ons/remove", async (req: Request<IUserParams, {}, I
     }
 })
 
-
 // aip thông tin liên hệ
-
 app.put("/users/:userId/looking-for", async (req: Request<IUserParams, {}, IUser>, res: Response) => {
 
     try {
@@ -278,7 +276,6 @@ app.put("/users/:userId/looking-for", async (req: Request<IUserParams, {}, IUser
 
     }
 })
-
 
 // xóa
 app.put("/users/:userId/looking-for/remove", async (req: Request<IUserParams, {}, IUser>, res: Response) => {

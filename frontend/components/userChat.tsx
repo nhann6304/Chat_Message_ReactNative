@@ -16,8 +16,6 @@ export default function UserChat({ userId, item }: { userId: string, item: IUser
 
     useEffect(() => {
         socket.on("receiveMessage", (newMessage) => {
-            console.log("Người nhận ", newMessage.receiverId);
-            console.log("Người gửi ", newMessage.senderId);
             if (newMessage.senderId === item?._id) {
                 setCount((prevCount) => prevCount + 1);
                 setShowCountMessage(showCountMessage + 1);

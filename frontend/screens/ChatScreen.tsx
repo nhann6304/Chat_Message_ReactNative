@@ -6,7 +6,7 @@ import axios from "axios";
 import { useFocusEffect, useNavigation } from "expo-router";
 import { jwtDecode } from "jwt-decode"; // Correct import for jwtDecode
 import { useCallback, useContext, useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Dimensions, Pressable, Text, View } from "react-native";
 import { NavigationProp } from "@react-navigation/native";
 import ProfileScreen from "./ProfileScreen";
 import UserChat from "@/components/userChat";
@@ -19,6 +19,7 @@ export default function ChatScreen() {
     const navigation = useNavigation<NavigationProp<any>>();
     const profiles = JSON.stringify(ProfileScreen);
     const { showCountMessage } = useContext(GlobalContext);
+    const width = Dimensions.get('window').width;
     console.log(showCountMessage);
     useEffect(() => {
         const fetchUser = async () => {
@@ -136,7 +137,6 @@ export default function ChatScreen() {
                 </Text>
                 <MaterialIcons name="keyboard-arrow-right" size={24} color="black" />
             </Pressable>
-
             <View>
                 {filterUser?.map((item, index) => (
                     <UserChat key={index} userId={userId} item={item} />
