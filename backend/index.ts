@@ -454,6 +454,7 @@ server.listen(PORT_SOCKET, HOST, () => {
 })
 
 app.get("/messages", async (req: Request, res: Response) => {
+    console.log("Chạy api messages");
     try {
         const { senderId, receiverId } = req.query;
 
@@ -516,3 +517,20 @@ app.get('/unreadMessages', async (req, res) => {
     }
 });
 
+
+app.post('/delete', async (req, res) => {
+    try {
+        const { message } = req.body;
+        if (!Array.isArray(message) || message.length == 0) {
+            return res.status(400).json({ message: "Không có tin nhắn đẻ xóa" });
+        }
+
+        for (const messageID of message) {
+            await Chat.findByIdAndUpdate(messageID);
+        }
+        res.status(200).json({ message: "Xóa tin nhắn thành công" })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ messagge: "Xóa tin nhắn thất bại", error })
+    }
+})

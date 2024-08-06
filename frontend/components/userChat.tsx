@@ -5,14 +5,27 @@ import { Image, Pressable, Text, View, Dimensions } from "react-native";
 import { GlobalContext } from "@/context/context";
 import { IUser } from "@/interfaces/IUser.interface";
 import { io } from "socket.io-client";
-import { URL_SOCKET } from "@/app/url";
+import { URL_LOCAL, URL_SOCKET } from "@/app/url";
+import axios from "axios";
 
 export default function UserChat({ userId, item }: { userId: string, item: IUser }) {
     const navigation = useNavigation<NavigationProp<any>>();
     const width = Dimensions.get('window').width;
+    const [messages, setMessages] = useState<IUser[]>([]);
     const { showCountMessage, setShowCountMessage } = useContext(GlobalContext);
     const [count, setCount] = useState<number>(0);
     const socket = io(`${URL_SOCKET}`);
+
+
+    const getLastMessage = () => {
+        const n = messages.length;
+        return messages[n - 1];
+
+    }
+
+    const lastMessage = getLastMessage();
+
+    console.log("lastMessage::::", lastMessage);
 
     useEffect(() => {
         socket.on("receiveMessage", (newMessage) => {
@@ -20,6 +33,7 @@ export default function UserChat({ userId, item }: { userId: string, item: IUser
                 setCount((prevCount) => prevCount + 1);
                 setShowCountMessage(showCountMessage + 1);
             }
+            // setMessages(item);
         });
         return () => {
             socket.off("receiveMessage");
@@ -27,7 +41,27 @@ export default function UserChat({ userId, item }: { userId: string, item: IUser
     }, [showCountMessage, setShowCountMessage, userId]);
     // function nhấn vào chuyển qua trang phòng chat 
 
-    console.log(item?.name);
+    const featchMessage = async () => {
+        try {
+            const senderId = userId;
+            const receiverId = item?._id;
+            const response = await axios.get(`${URL_LOCAL}/messages`, {
+                params: { senderId, receiverId },
+            });
+
+            console.log(response);
+            setMessages(response.data)
+
+        } catch (error) {
+            console.log("Lỗi khi lấy tin nhắn", error);
+        }
+    }
+
+    useEffect(() => {
+        featchMessage();
+    }, [])
+
+
     return (
         <Pressable
             onPress={() =>

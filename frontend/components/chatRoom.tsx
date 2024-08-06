@@ -78,9 +78,8 @@ export default function ChatRoom() {
         });
 
         socket.on("receiveMessage", async (newMessage: IMessage) => {
-            console.log("zoo");
             const timeStamp = new Date().toISOString();
-            console.log(timeStamp);
+            console.log("timeStamp::::::", timeStamp);
             const messageWithTime = { ...newMessage, timeStamp };
             setMessageArr(prevMessages => [...prevMessages, messageWithTime]);
         });
@@ -95,7 +94,7 @@ export default function ChatRoom() {
                             setTypingMessage("");
                         }
                     });
-                }, 5000);
+                }, 10000);
             }
         });
         //Ngắt socket
@@ -163,7 +162,7 @@ export default function ChatRoom() {
                     message,
                     timestamp,
                 });
-                socket.emit("sendMessage", { senderId, receiverId, message });
+                socket.emit("sendMessage", { senderId, receiverId, message, timestamp });
                 setMessage("");
                 socket.emit("stopTyping", senderId);
             } catch (error) {
@@ -186,6 +185,10 @@ export default function ChatRoom() {
         return date.toLocaleString("en-VN", options);
     };
     // console.log("infoReceiver:::::", infoReceiver);
+
+    // const handleDelete = () =>{
+
+    // }
     return (
         <>
             <View
@@ -258,6 +261,7 @@ export default function ChatRoom() {
                     contentContainerStyle={{ flexGrow: 1, paddingTop: 5 }} keyboardShouldPersistTaps="handled">
                     {messageArr.map((item, index) => (
                         <Pressable
+                            // onPress={hanleDelete}
                             key={index}
                             style={[
                                 item.senderId === senderId
