@@ -22,7 +22,7 @@ const io = new SocketIOServer(server);
 const SECRET_KEY = process.env.SECRET_KEY || "default_secret_key";
 const PORT = 9000;
 const PORT_SOCKET = 8003;
-const HOST = '192.168.1.20';
+const HOST = '192.168.1.4';
 app.use(cors(
     { origin: "*" }
 ));
@@ -83,7 +83,7 @@ app.get("/verify/:token", async (req: Request<any, {}, any>, res: Response) => {
 // api chức năng đăng ký user
 app.post("/register", async (req: Request<{}, {}, IUser>, res: Response) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, deviceToken } = req.body;
         // Kiểm tra Email đã tồn tại
         const existingUser = await User.findOne({ email });
         if (existingUser) {
@@ -93,7 +93,8 @@ app.post("/register", async (req: Request<{}, {}, IUser>, res: Response) => {
         const newUser = new User({
             name,
             email,
-            password
+            password,
+            deviceToken
         });
         // tạo mới gửi lên 1 token 
         newUser.verificationToken = crypto.randomBytes(20).toString("hex");
@@ -514,3 +515,4 @@ app.get('/unreadMessages', async (req, res) => {
         res.status(500).send("Error fetching unread messages count");
     }
 });
+

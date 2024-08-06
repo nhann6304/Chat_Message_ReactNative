@@ -1,8 +1,8 @@
 import { NavigationProp, useRoute } from "@react-navigation/native";
 import { useNavigation } from "expo-router";
-import { Dimensions, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Dimensions, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Entypo, Feather, Ionicons } from "@expo/vector-icons";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { URL_LOCAL, URL_SOCKET } from "@/app/url";
 import axios from "axios";
@@ -18,6 +18,7 @@ interface RouteParams {
     name: string;
     receiverId: string;
     senderId: string;
+    deviceToken: string;
 }
 
 export default function ChatRoom() {
@@ -27,40 +28,44 @@ export default function ChatRoom() {
     const [typingMessage, setTypingMessage] = useState<string>("");
     const width = Dimensions.get('window').width;
     const route = useRoute();
-    const { image, name, receiverId, senderId } = route.params as RouteParams;
+    const { image, name, receiverId, senderId, deviceToken } = route.params as RouteParams;
     const socket = io(`${URL_SOCKET}`);
     const [infoReceiver, setInfoReceiver] = useState<IUser>();
     const { setShowCountMessage, showCountMessage } = useContext(GlobalContext);
     const navigation = useNavigation<NavigationProp<any>>();
-    async function getNotificationToken() {
-        const { status } = await Notifications.getPermissionsAsync();
+    const EXPO_SERVER_URL = 'https://api.expo.dev/v2/push/send';
+    const scrollViewRef = useRef<ScrollView>(null);
+    // function xin cấp quyền thông báo lần đầu cài đặt ứng dụng
+    async function registerNotification() {
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert("Yêu cầu cấp quyền", "Hãy cấp quyền cho ứng dụng");
+            return;
+        };
     }
 
+    const sendPushNotification = async (token: string, title: string, body: string) => {
+        const message = {
+            to: token,
+            sound: "default",
+            title,
+            body,
+        };
 
-    // async function registerNotification() {
-    //     const { status: existingStatus } = await Permissions.getAsync(Permissions.NOTIFICATIONS);
-    //     let finalStatus = existingStatus;
-
-    //     if (existingStatus !== "granted") {
-    //         const { status } = await Permissions.askAsync(Permissions.NOTIFICATIONS);
-    //         finalStatus = status;
-    //     }
-
-    //     if (finalStatus !== "granted") {
-    //         alert("Failed khi xác thực người dùng");
-    //         return;
-    //     }
-    //     const token = (await Notifications.getExpoPushTokenAsync()).data;
-    //     console.log("token:::::", token);
-    // }
+        try {
+            await axios.post(EXPO_SERVER_URL, message);
+        } catch (error) {
+            console.error("Error sending push notification:", error);
+        }
+    };
 
     useEffect(() => {
         fetchUser();
+        registerNotification();
     }, [receiverId, senderId])
 
     const fetchUser = async () => {
         try {
-
             const response = await axios.get(`${URL_LOCAL}/users/${receiverId}`)
             setInfoReceiver(response?.data?.user);
         } catch (error) {
@@ -73,7 +78,9 @@ export default function ChatRoom() {
         });
 
         socket.on("receiveMessage", async (newMessage: IMessage) => {
+            console.log("zoo");
             const timeStamp = new Date().toISOString();
+            console.log(timeStamp);
             const messageWithTime = { ...newMessage, timeStamp };
             setMessageArr(prevMessages => [...prevMessages, messageWithTime]);
         });
@@ -91,7 +98,6 @@ export default function ChatRoom() {
                 }, 5000);
             }
         });
-
         //Ngắt socket
         // socket.on("stopTyping", (typingUserId: string) => {
         //     if (typingUserId !== senderId) {
@@ -109,6 +115,7 @@ export default function ChatRoom() {
     useEffect(() => {
         const unreadMessages = messageArr.filter((item) => item._id !== receiverId);
         setShowCountMessage(unreadMessages.length);
+        scrollViewRef.current?.scrollToEnd({ animated: true })
     }, [messageArr]);
 
     const fetchMessage = async () => {
@@ -146,6 +153,7 @@ export default function ChatRoom() {
     }, [message]);
 
     const handleMessage = async () => {
+        console.log("chay");
         const timestamp = new Date().toISOString();
         if (message.trim()) {
             try {
@@ -162,6 +170,7 @@ export default function ChatRoom() {
                 console.log(error);
             }
         }
+        sendPushNotification(deviceToken, "Tin nhắn mới", message)
     };
 
     const formatTime = (time: string | Date): string => {
@@ -243,7 +252,10 @@ export default function ChatRoom() {
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1, backgroundColor: "white" }}>
-                <ScrollView contentContainerStyle={{ flexGrow: 1, paddingTop: 5 }} keyboardShouldPersistTaps="handled">
+                <ScrollView
+                    onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                    ref={scrollViewRef}
+                    contentContainerStyle={{ flexGrow: 1, paddingTop: 5 }} keyboardShouldPersistTaps="handled">
                     {messageArr.map((item, index) => (
                         <Pressable
                             key={index}

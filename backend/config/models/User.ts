@@ -24,6 +24,10 @@ const userSchema = new mongoose.Schema<IUser>({
         type: Boolean,
         default: false,
     },
+    deviceToken: {
+        type: String,
+        required: true
+    },
     verificationToken: String,
     crushes: [
         {

@@ -25,7 +25,9 @@ export default function UserChat({ userId, item }: { userId: string, item: IUser
             socket.off("receiveMessage");
         };
     }, [showCountMessage, setShowCountMessage, userId]);
+    // function nhấn vào chuyển qua trang phòng chat 
 
+    console.log(item?.name);
     return (
         <Pressable
             onPress={() =>
@@ -34,6 +36,7 @@ export default function UserChat({ userId, item }: { userId: string, item: IUser
                     name: item?.name,
                     receiverId: item?._id,
                     senderId: userId,
+                    deviceToken: item?.deviceToken,
                 })
             }
             style={{ flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 12 }}

@@ -13,6 +13,7 @@ export default function RootLayout() {
     }),
   });
 
+
   return (
     <GlobalState>
       <GestureHandlerRootView style={{ flex: 1 }}>

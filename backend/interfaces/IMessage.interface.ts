@@ -5,5 +5,5 @@ export interface IMessage {
     receiverId: string;
     message: string;
     timestamp: Date;
-    isRead: boolean
+    isRead: boolean;
 }

@@ -14,7 +14,8 @@ export interface IUser {
     description?: string;
     turnOns?: string[];
     lookingFor?: string[];
-    imageUrl?: any
+    imageUrl?: any;
+    deviceToken?: string;
 }
 
 

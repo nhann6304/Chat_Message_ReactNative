@@ -45,8 +45,6 @@ export default function ChatScreen() {
                 `${URL_LOCAL}/received-likes/${userId}/details`
             );
 
-            console.log("fetchReceivedLikesDetails::", response);
-
             const receivedLikesDetails = response.data.receivedLikesDetails;
 
             setProfile(receivedLikesDetails);
@@ -86,7 +84,6 @@ export default function ChatScreen() {
 
 
     useFocusEffect(
-
         useCallback(() => {
             if (userId) {
                 fetchUserMatches();
@@ -140,6 +137,7 @@ export default function ChatScreen() {
             <View>
                 {filterUser?.map((item, index) => (
                     <UserChat key={index} userId={userId} item={item} />
+                    // <Text>{item?.deviceToken}</Text>
                 ))}
             </View>
         </View>

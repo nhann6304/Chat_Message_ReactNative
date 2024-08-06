@@ -8,42 +8,47 @@ import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { Alert, Image, KeyboardAvoidingView, Pressable, SafeAreaView, Text, View } from "react-native";
 import { TextInput } from "react-native-gesture-handler";
+import * as Notifications from 'expo-notifications';
 
 export default function RegisterScreen() {
     const [name, setName] = useState<string>("");
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const navigation = useNavigation<NavigationProp<any>>();
-    const handleRegister = () => {
+    const handleRegister = async () => {
+        const token = (await Notifications.getExpoPushTokenAsync({ projectId: "7e22201e-0179-47dd-bdc2-56a72c4c2d1a" })).data;
+        console.log(typeof token);
         const user: Partial<IUser> = {
             name: name,
             email: email,
             password: password,
-        }
-        // console.log(123123);
-        axios.post(`${URL_LOCAL}/register`, user)
-            .then((response) => {
-                console.log(response);
-                Alert.alert("Đăng ký thành công", "Bạn đã đăng ký thành công hãy qua trang đăng nhập", [
+            deviceToken: token
+        };
+
+        try {
+            const response = await axios.post(`${URL_LOCAL}/register`, user);
+            console.log(response);
+            Alert.alert(
+                "Đăng ký thành công",
+                "Bạn đã đăng ký thành công hãy qua trang đăng nhập",
+                [
                     {
                         text: "Cancel",
                         onPress: () => console.log("Cancel Pressed"),
                         style: "cancel"
                     },
                     { text: "OK", onPress: () => navigation.navigate("Select") }
-                ]);
-                setName("");
-                setEmail("");
-                setPassword("");
-            })
-            .catch((error) => {
-                console.log("Lỗi FrontEnd khi đăng ký ", error);
-                Alert.alert("Đăng ký thất bại", "Đăng ký thất bại vui lòng thử lại")
-            }
+                ]
+            );
+            setName("");
+            setEmail("");
+            setPassword("");
+        } catch (error) {
+            console.log("Lỗi FrontEnd khi đăng ký ", error);
+            Alert.alert("Đăng ký thất bại", "Đăng ký thất bại vui lòng thử lại");
+        }
+    };
 
-            )
-
-    }
     return (
         <>
             <SafeAreaView style={{ flex: 1, backgroundColor: "white", alignItems: "center" }}>
