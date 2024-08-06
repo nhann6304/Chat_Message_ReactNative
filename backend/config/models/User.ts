@@ -28,6 +28,10 @@ const userSchema = new mongoose.Schema<IUser>({
         type: String,
         required: true
     },
+    isStatus: {
+        type: Boolean,
+        required: true
+    },
     verificationToken: String,
     crushes: [
         {
