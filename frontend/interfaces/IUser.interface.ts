@@ -13,7 +13,8 @@ export interface IUser {
     description?: string;
     turnOns?: string[];
     lookingFor?: string[];
-    deviceToken?: string
+    deviceToken?: string;
+    lastActive: Date
 }
 
 

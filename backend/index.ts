@@ -22,7 +22,7 @@ const io = new SocketIOServer(server);
 const SECRET_KEY = process.env.SECRET_KEY || "default_secret_key";
 const PORT = 9000;
 const PORT_SOCKET = 8003;
-const HOST = '192.168.1.4';
+const HOST = '192.168.100.167';
 app.use(cors(
     { origin: "*" }
 ));
@@ -422,30 +422,48 @@ app.get("/users", async (req: Request, res: Response) => {
 
 
 io.on("connection", (socket) => {
+    console.log("Client connected");
+
+    socket.on("join", async (userId) => {
+        console.log(`${userId} joined`);
+        await User.findByIdAndUpdate(userId, { status: "online" });
+        io.emit("userStatus", userId, "online");
+    });
+
+    socket.on("checkStatus", async (userId) => {
+        const user = await User.findById(userId);
+        const status = user ? user.status : "offline";
+        socket.emit("userStatus", userId, status);
+    });
 
     socket.on("sendMessage", async (data) => {
         console.log(data);
         try {
-            // JSON.stringify({ abc: "123" }) 
             io.emit("receiveMessage", data);
-
+            // Save the message to the database if needed
             // const { senderId, receiverId, message } = data;
             // const newMessage = new Chat({ senderId, receiverId, message });
             // await newMessage.save();
-
         } catch (error) {
             console.error("Error sending message:", error);
         }
-        socket.on("disconnect", () => {
-            console.log("Client disconnected");
-        });
-    });
-    socket.on('typing', (senderId) => {
-        socket.broadcast.emit('typing', senderId);
     });
 
-    socket.on('stopTyping', (senderId) => {
-        socket.broadcast.emit('stopTyping', senderId);
+    socket.on("typing", (senderId) => {
+        socket.broadcast.emit("typing", senderId);
+    });
+
+    socket.on("stopTyping", (senderId) => {
+        socket.broadcast.emit("stopTyping", senderId);
+    });
+
+    socket.on("disconnect", async () => {
+        console.log("Client disconnected");
+        // Assuming you pass the userId when connecting
+        // const userId = socket.userId;
+        const userId = "66b1aa57322bfe76d507cb17";
+        await User.findByIdAndUpdate(userId, { status: "offline" });
+        io.emit("userStatus", userId, "offline");
     });
 });
 

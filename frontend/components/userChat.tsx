@@ -17,15 +17,14 @@ export default function UserChat({ userId, item }: { userId: string, item: IUser
     const socket = io(`${URL_SOCKET}`);
 
 
-    const getLastMessage = () => {
-        const n = messages.length;
-        return messages[n - 1];
+    // const getLastMessage = () => {
+    //     const n = messages.length;
+    //     return messages[n - 1];
 
-    }
+    // }
 
-    const lastMessage = getLastMessage();
+    // const lastMessage = getLastMessage();
 
-    console.log("lastMessage::::", lastMessage);
 
     useEffect(() => {
         socket.on("receiveMessage", (newMessage) => {

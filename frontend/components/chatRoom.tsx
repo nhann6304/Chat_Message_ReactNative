@@ -30,11 +30,12 @@ export default function ChatRoom() {
     const route = useRoute();
     const { image, name, receiverId, senderId, deviceToken } = route.params as RouteParams;
     const socket = io(`${URL_SOCKET}`);
+    const [isOnline, setIsOnline] = useState<boolean>(false);
     const [infoReceiver, setInfoReceiver] = useState<IUser>();
     const { setShowCountMessage, showCountMessage } = useContext(GlobalContext);
     const navigation = useNavigation<NavigationProp<any>>();
-    const EXPO_SERVER_URL = 'https://api.expo.dev/v2/push/send';
     const scrollViewRef = useRef<ScrollView>(null);
+    const EXPO_SERVER_URL = 'https://api.expo.dev/v2/push/send';
     // function xin cấp quyền thông báo lần đầu cài đặt ứng dụng
     async function registerNotification() {
         const { status } = await Notifications.requestPermissionsAsync();
@@ -43,7 +44,6 @@ export default function ChatRoom() {
             return;
         };
     }
-
     const sendPushNotification = async (token: string, title: string, body: string) => {
         const message = {
             to: token,
@@ -62,6 +62,20 @@ export default function ChatRoom() {
     useEffect(() => {
         fetchUser();
         registerNotification();
+
+        socket.emit("join", senderId);
+        socket.emit("checkStatus", receiverId)
+
+        socket.on("userStatus", (userId, status) => {
+            if (userId === receiverId) {
+                setIsOnline(status === "online");
+            }
+        });
+        return () => {
+            socket.emit("leave", senderId);
+            socket.off("userStatus");
+        }
+
     }, [receiverId, senderId])
 
     const fetchUser = async () => {
@@ -79,37 +93,41 @@ export default function ChatRoom() {
 
         socket.on("receiveMessage", async (newMessage: IMessage) => {
             const timeStamp = new Date().toISOString();
-            console.log("timeStamp::::::", timeStamp);
             const messageWithTime = { ...newMessage, timeStamp };
             setMessageArr(prevMessages => [...prevMessages, messageWithTime]);
         });
 
+        let typingTimeout: NodeJS.Timeout | null = null;
+
         socket.on("typing", (typingUserId: string) => {
             if (typingUserId !== senderId) {
                 setTypingMessage("Đang soạn tin...");
-                setTimeout(() => {
+
+                if (typingTimeout) {
+                    clearTimeout(typingTimeout);
+                }
+
+                typingTimeout = setTimeout(() => {
                     setTypingMessage("");
-                    socket.on("stopTyping", (typingUserId: string) => {
-                        if (typingUserId !== senderId) {
-                            setTypingMessage("");
-                        }
-                    });
                 }, 10000);
             }
         });
-        //Ngắt socket
-        // socket.on("stopTyping", (typingUserId: string) => {
-        //     if (typingUserId !== senderId) {
-        //         setTypingMessage("");
-        //     }
-        // });
+
+        socket.on("stopTyping", (typingUserId: string) => {
+            if (typingUserId !== senderId) {
+                setTypingMessage("");
+                if (typingTimeout) {
+                    clearTimeout(typingTimeout);
+                }
+            }
+        });
 
         return () => {
             socket.off("receiveMessage");
             socket.off("typing");
             socket.off("stopTyping");
         };
-    }, []);
+    }, [senderId]);
 
     useEffect(() => {
         const unreadMessages = messageArr.filter((item) => item._id !== receiverId);
@@ -129,6 +147,7 @@ export default function ChatRoom() {
     };
 
     const markAsRead = async () => {
+        console.log("function markAsRead running");
         try {
             await axios.post(`${URL_LOCAL}/markAsRead`, { senderId, receiverId });
         } catch (error) {
@@ -238,7 +257,7 @@ export default function ChatRoom() {
                     <View style={{ flexDirection: 'row', justifyContent: "space-between", width: width / 1.5 }}>
                         <View>
                             <Text style={{ color: "black", fontWeight: 600, fontSize: 16 }}>{infoReceiver?.name}</Text>
-                            <Text style={{ color: "#6087f3", fontWeight: 500, fontSize: 12 }}>Online</Text>
+                            <Text style={{ color: "#6087f3", fontWeight: 500, fontSize: 12 }}>{isOnline ? "Online" : "Offline"}</Text>
                         </View>
                         <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
                             <Pressable>

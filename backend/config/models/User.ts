@@ -28,10 +28,7 @@ const userSchema = new mongoose.Schema<IUser>({
         type: String,
         required: true
     },
-    isStatus: {
-        type: Boolean,
-        required: true
-    },
+
     verificationToken: String,
     crushes: [
         {
@@ -69,6 +66,11 @@ const userSchema = new mongoose.Schema<IUser>({
             type: String
         },
     ],
+    status: {
+        type: String,
+        enum: ["online", "offline"],
+        default: "offline",
+    },
 })
 
 export default userSchema

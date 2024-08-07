@@ -16,7 +16,8 @@ export interface IUser {
     lookingFor?: string[];
     imageUrl?: any;
     deviceToken: string;
-    isStatus: boolean
+    lastActive: Date;
+    status?: "online" | "offline";
 }
 
 
