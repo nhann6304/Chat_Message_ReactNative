@@ -18,6 +18,7 @@ export interface IUser {
     deviceToken: string;
     lastActive: Date;
     status?: "online" | "offline";
+    lastOfflineTime?: Date;
 }
 
 

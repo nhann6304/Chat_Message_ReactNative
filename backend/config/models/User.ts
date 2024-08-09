@@ -71,6 +71,10 @@ const userSchema = new mongoose.Schema<IUser>({
         enum: ["online", "offline"],
         default: "offline",
     },
+    lastOfflineTime: {
+        type: Date,
+    }
+
 })
 
 export default userSchema

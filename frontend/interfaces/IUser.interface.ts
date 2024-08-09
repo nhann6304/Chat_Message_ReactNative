@@ -14,7 +14,7 @@ export interface IUser {
     turnOns?: string[];
     lookingFor?: string[];
     deviceToken?: string;
-    lastActive: Date
+    lastOfflineTime?: string
 }
 
 

@@ -15,6 +15,7 @@ export default function RegisterScreen() {
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const navigation = useNavigation<NavigationProp<any>>();
+    const timeNow = new Date().toISOString();
     const handleRegister = async () => {
         const token = (await Notifications.getExpoPushTokenAsync({ projectId: "7e22201e-0179-47dd-bdc2-56a72c4c2d1a" })).data;
         console.log(typeof token);
@@ -22,7 +23,8 @@ export default function RegisterScreen() {
             name: name,
             email: email,
             password: password,
-            deviceToken: token
+            deviceToken: token,
+            lastOfflineTime: timeNow
         };
 
         try {

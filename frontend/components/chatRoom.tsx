@@ -2,7 +2,7 @@ import { NavigationProp, useRoute } from "@react-navigation/native";
 import { useNavigation } from "expo-router";
 import { Alert, Dimensions, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Entypo, Feather, Ionicons } from "@expo/vector-icons";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState, useTransition } from "react";
 import { io } from "socket.io-client";
 import { URL_LOCAL, URL_SOCKET } from "@/app/url";
 import axios from "axios";
@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { IUser } from "@/interfaces/IUser.interface";
 import * as Notifications from 'expo-notifications';
 import * as Permissions from 'expo-permissions';
+import { calculateOfflineDuration, formatTime } from "@/utils/Calculate";
 
 interface RouteParams {
     image: string;
@@ -19,6 +20,7 @@ interface RouteParams {
     receiverId: string;
     senderId: string;
     deviceToken: string;
+    timeOff: string;
 }
 
 export default function ChatRoom() {
@@ -28,14 +30,20 @@ export default function ChatRoom() {
     const [typingMessage, setTypingMessage] = useState<string>("");
     const width = Dimensions.get('window').width;
     const route = useRoute();
-    const { image, name, receiverId, senderId, deviceToken } = route.params as RouteParams;
+    const { image, name, timeOff, receiverId, senderId, deviceToken } = route.params as RouteParams;
     const socket = io(`${URL_SOCKET}`);
     const [isOnline, setIsOnline] = useState<boolean>(false);
     const [infoReceiver, setInfoReceiver] = useState<IUser>();
     const { setShowCountMessage, showCountMessage } = useContext(GlobalContext);
     const navigation = useNavigation<NavigationProp<any>>();
     const scrollViewRef = useRef<ScrollView>(null);
+    const [isPending, startTransition] = useTransition();
+    const [timeOffline, setTimeOfline] = useState<string>("");
     const EXPO_SERVER_URL = 'https://api.expo.dev/v2/push/send';
+    const nowTime = new Date().toISOString();
+
+
+
     // function xin cấp quyền thông báo lần đầu cài đặt ứng dụng
     async function registerNotification() {
         const { status } = await Notifications.requestPermissionsAsync();
@@ -62,13 +70,21 @@ export default function ChatRoom() {
     useEffect(() => {
         fetchUser();
         registerNotification();
-
         socket.emit("join", senderId);
+        // socket.emit('disconnect', senderId)
+        startTransition(() => {
+            socket.emit('registerUser', senderId);
+        })
         socket.emit("checkStatus", receiverId)
-
         socket.on("userStatus", (userId, status) => {
+            console.log({ userId, status });
             if (userId === receiverId) {
                 setIsOnline(status === "online");
+                if (status === "offline") {
+                    console.log("vào");
+                    const duration = calculateOfflineDuration(timeOff);
+                    setTimeOfline(duration)
+                }
             }
         });
         return () => {
@@ -92,8 +108,7 @@ export default function ChatRoom() {
         });
 
         socket.on("receiveMessage", async (newMessage: IMessage) => {
-            const timeStamp = new Date().toISOString();
-            const messageWithTime = { ...newMessage, timeStamp };
+            const messageWithTime = { ...newMessage, nowTime };
             setMessageArr(prevMessages => [...prevMessages, messageWithTime]);
         });
 
@@ -121,11 +136,11 @@ export default function ChatRoom() {
                 }
             }
         });
-
         return () => {
             socket.off("receiveMessage");
             socket.off("typing");
             socket.off("stopTyping");
+
         };
     }, [senderId]);
 
@@ -191,23 +206,11 @@ export default function ChatRoom() {
         sendPushNotification(deviceToken, "Tin nhắn mới", message)
     };
 
-    const formatTime = (time: string | Date): string => {
-        const date = new Date(time);
-        if (isNaN(date.getTime())) {
-            return "Invalid date";
-        }
-        const options: Intl.DateTimeFormatOptions = {
-            hour: "numeric",
-            minute: "numeric",
-            hour12: true
-        };
-        return date.toLocaleString("en-VN", options);
-    };
+
     // console.log("infoReceiver:::::", infoReceiver);
 
-    // const handleDelete = () =>{
 
-    // }
+    console.log("timeOffline::::", timeOffline);
     return (
         <>
             <View
@@ -244,12 +247,12 @@ export default function ChatRoom() {
                                 position: "absolute",
                                 bottom: -1,
                                 right: 4,
-                                width: 10,
-                                height: 10,
+                                width: 12,
+                                height: 12,
                                 borderRadius: 10,
-                                backgroundColor: "green",
+                                backgroundColor: isOnline ? "green" : "red",
                                 zIndex: 999,
-                                borderWidth: 1,
+                                borderWidth: 2,
                                 borderColor: "white"
                             }} >
                         </View>
@@ -257,7 +260,7 @@ export default function ChatRoom() {
                     <View style={{ flexDirection: 'row', justifyContent: "space-between", width: width / 1.5 }}>
                         <View>
                             <Text style={{ color: "black", fontWeight: 600, fontSize: 16 }}>{infoReceiver?.name}</Text>
-                            <Text style={{ color: "#6087f3", fontWeight: 500, fontSize: 12 }}>{isOnline ? "Online" : "Offline"}</Text>
+                            <Text style={{ color: "#6087f3", fontWeight: 500, fontSize: 12 }}>{isOnline ? "Đang truy cập" : `Hoạt động ${timeOffline}`}</Text>
                         </View>
                         <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
                             <Pressable>
@@ -270,7 +273,7 @@ export default function ChatRoom() {
                         </View>
                     </View>
                 </View>
-            </View>
+            </View >
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1, backgroundColor: "white" }}>
@@ -314,7 +317,16 @@ export default function ChatRoom() {
                         </View>
                     )}
                 </ScrollView>
-                <View style={{ flexDirection: "row", alignItems: 'center', paddingHorizontal: 10, paddingVertical: 10, borderTopWidth: 1, borderColor: "#dddddd", marginBottom: 20, gap: 5 }}>
+                <View style={{
+                    flexDirection: "row",
+                    alignItems: 'center',
+                    paddingHorizontal: 10,
+                    paddingVertical: 10,
+                    borderTopWidth: 1,
+                    borderColor: "#dddddd",
+                    marginBottom: 20,
+                    gap: 5
+                }}>
                     <Entypo name="emoji-happy" size={24} color="black" />
                     <TextInput
                         value={message}

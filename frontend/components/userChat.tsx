@@ -24,6 +24,12 @@ export default function UserChat({ userId, item }: { userId: string, item: IUser
     // }
 
     // const lastMessage = getLastMessage();
+    useEffect(() => {
+        socket.on("connect", () => {
+            console.log("connect");
+        });
+    })
+
 
 
     useEffect(() => {
@@ -39,7 +45,17 @@ export default function UserChat({ userId, item }: { userId: string, item: IUser
         };
     }, [showCountMessage, setShowCountMessage, userId]);
     // function nhấn vào chuyển qua trang phòng chat 
-
+    const handleNavigation = () => {
+        navigation.navigate('ChatRoom', {
+            image: item?.profileImage && item.profileImage.length > 0 ? item.profileImage[0] : '',
+            name: item?.name,
+            receiverId: item?._id,
+            senderId: userId,
+            deviceToken: item?.deviceToken,
+            timeOff: item?.lastOfflineTime
+        })
+        setCount(0);
+    }
     const featchMessage = async () => {
         try {
             const senderId = userId;
@@ -63,15 +79,7 @@ export default function UserChat({ userId, item }: { userId: string, item: IUser
 
     return (
         <Pressable
-            onPress={() =>
-                navigation.navigate('ChatRoom', {
-                    image: item?.profileImage && item.profileImage.length > 0 ? item.profileImage[0] : '',
-                    name: item?.name,
-                    receiverId: item?._id,
-                    senderId: userId,
-                    deviceToken: item?.deviceToken,
-                })
-            }
+            onPress={handleNavigation}
             style={{ flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 12 }}
         >
             <View>
@@ -79,6 +87,20 @@ export default function UserChat({ userId, item }: { userId: string, item: IUser
                     style={{ width: 60, height: 60, borderRadius: 35 }}
                     source={{ uri: item?.profileImage && item.profileImage.length > 0 ? item.profileImage[0] : 'default-image-url' }}
                 />
+                {/* <View
+                    style={{
+                        position: "absolute",
+                        bottom: -1,
+                        right: 4,
+                        width: 16,
+                        height: 16,
+                        borderRadius: 10,
+                        backgroundColor: "red",
+                        zIndex: 999,
+                        borderWidth: 2,
+                        borderColor: "white"
+                    }}
+                ></View> */}
             </View>
 
             <View>
