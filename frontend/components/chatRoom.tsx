@@ -11,7 +11,6 @@ import { GlobalContext } from "@/context/context";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IUser } from "@/interfaces/IUser.interface";
 import * as Notifications from 'expo-notifications';
-import * as Permissions from 'expo-permissions';
 import { calculateOfflineDuration, formatTime } from "@/utils/Calculate";
 
 interface RouteParams {
@@ -24,25 +23,27 @@ interface RouteParams {
 }
 
 export default function ChatRoom() {
+    const [isRead, setIsRead] = useState<boolean>(true);
     const [message, setMessage] = useState<string>("");
-    const [messageArr, setMessageArr] = useState<IMessage[]>([]);
     const [isTyping, setIsTyping] = useState<boolean>(false);
+    const [isOnline, setIsOnline] = useState<boolean>(false);
+    const [timeOffline, setTimeOffline] = useState<string>("");
+    const [infoReceiver, setInfoReceiver] = useState<IUser>();
+    const [messageArr, setMessageArr] = useState<IMessage[]>([]);
     const [typingMessage, setTypingMessage] = useState<string>("");
-    const width = Dimensions.get('window').width;
     const route = useRoute();
     const { image, name, timeOff, receiverId, senderId, deviceToken } = route.params as RouteParams;
     const socket = io(`${URL_SOCKET}`);
-    const [isOnline, setIsOnline] = useState<boolean>(false);
-    const [infoReceiver, setInfoReceiver] = useState<IUser>();
     const { setShowCountMessage, showCountMessage } = useContext(GlobalContext);
     const navigation = useNavigation<NavigationProp<any>>();
     const scrollViewRef = useRef<ScrollView>(null);
-    const [isPending, startTransition] = useTransition();
-    const [timeOffline, setTimeOfline] = useState<string>("");
     const EXPO_SERVER_URL = 'https://api.expo.dev/v2/push/send';
     const nowTime = new Date().toISOString();
+    const width = Dimensions.get('window').width;
+    console.log(receiverId);
 
 
+    const latestMessageFromSender = messageArr[messageArr.length - 1]?.senderId === senderId;
 
     // function xin cấp quyền thông báo lần đầu cài đặt ứng dụng
     async function registerNotification() {
@@ -72,18 +73,20 @@ export default function ChatRoom() {
         registerNotification();
         socket.emit("join", senderId);
         // socket.emit('disconnect', senderId)
-        startTransition(() => {
-            socket.emit('registerUser', senderId);
-        })
-        socket.emit("checkStatus", receiverId)
+        socket.emit('registerUser', senderId);
+        socket.emit("checkStatus", receiverId);
+        markAsRead();
+
         socket.on("userStatus", (userId, status) => {
             console.log({ userId, status });
             if (userId === receiverId) {
                 setIsOnline(status === "online");
+                setIsRead(true);
                 if (status === "offline") {
-                    console.log("vào");
+                    setIsOnline(false);
                     const duration = calculateOfflineDuration(timeOff);
-                    setTimeOfline(duration)
+                    setTimeOffline(duration);
+                    setIsRead(false);
                 }
             }
         });
@@ -110,6 +113,7 @@ export default function ChatRoom() {
         socket.on("receiveMessage", async (newMessage: IMessage) => {
             const messageWithTime = { ...newMessage, nowTime };
             setMessageArr(prevMessages => [...prevMessages, messageWithTime]);
+
         });
 
         let typingTimeout: NodeJS.Timeout | null = null;
@@ -162,17 +166,21 @@ export default function ChatRoom() {
     };
 
     const markAsRead = async () => {
-        console.log("function markAsRead running");
-        try {
-            await axios.post(`${URL_LOCAL}/markAsRead`, { senderId, receiverId });
-        } catch (error) {
-            console.error("Error marking messages as read:", error);
+        if (messageArr.length > 0) {
+            const lastMessageId = messageArr[messageArr.length - 1]._id;
+            console.log("Marking last message as read:", lastMessageId);
+            try {
+                await axios.post(`${URL_LOCAL}/markAsRead`, { senderId, receiverId, messageId: lastMessageId });
+            } catch (error) {
+                console.error("Error marking last message as read:", error);
+            }
         }
     };
 
     useEffect(() => {
         fetchMessage();
         markAsRead();
+        setIsRead(false);
     }, [senderId, receiverId]);
 
     useEffect(() => {
@@ -186,7 +194,6 @@ export default function ChatRoom() {
     }, [message]);
 
     const handleMessage = async () => {
-        console.log("chay");
         const timestamp = new Date().toISOString();
         if (message.trim()) {
             try {
@@ -207,7 +214,14 @@ export default function ChatRoom() {
     };
 
 
-    // console.log("infoReceiver:::::", infoReceiver);
+    useEffect(() => {
+        socket.emit("joinChatRoom", { userId: senderId, receiverId });
+        return () => {
+            socket.emit("leaveChatRoom", { userId: senderId, receiverId });
+        };
+    }, [senderId, receiverId]);
+
+
 
 
     console.log("timeOffline::::", timeOffline);
@@ -283,7 +297,6 @@ export default function ChatRoom() {
                     contentContainerStyle={{ flexGrow: 1, paddingTop: 5 }} keyboardShouldPersistTaps="handled">
                     {messageArr.map((item, index) => (
                         <Pressable
-                            // onPress={hanleDelete}
                             key={index}
                             style={[
                                 item.senderId === senderId
@@ -311,12 +324,17 @@ export default function ChatRoom() {
                             <Text style={{ fontSize: 9, textAlign: "right", color: "#F0F0F0", marginTop: 5 }}>{formatTime(item.timestamp)}</Text>
                         </Pressable>
                     ))}
+                </ScrollView>
+                <View style={{ flexDirection: "row", padding: 10 }}>
                     {typingMessage && (
-                        <View style={{ paddingHorizontal: 10, paddingBottom: 10 }}>
+                        <View style={{ paddingHorizontal: 10 }}>
                             <Text style={{ fontStyle: "italic", color: "gray" }}>{typingMessage}</Text>
                         </View>
                     )}
-                </ScrollView>
+                    {isRead && latestMessageFromSender && (
+                        <View><Text>Đã xem</Text></View>
+                    )}
+                </View>
                 <View style={{
                     flexDirection: "row",
                     alignItems: 'center',

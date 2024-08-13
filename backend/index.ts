@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
 import dbConnect from "./config/dbconnect";
 import userSchema from "./config/models/User";
 import messageSchema from "./config/models/Message";
-import { IOperationUser, IUser, IUserParams, IUserQuery } from "./interfaces/IUser.interface";
+import { IAcceptFriend, IOperationUser, IUser, IUserParams, IUserQuery } from "./interfaces/IUser.interface";
 const User = mongoose.model("User", userSchema);
 const Chat = mongoose.model("Message", messageSchema);
 const app = express();
@@ -16,13 +16,14 @@ import nodemailer from "nodemailer"
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { IMessage } from "./interfaces/IMessage.interface";
+import { CustomSocket } from "./interfaces/ISocket.interface";
 const server = http.createServer(app);
 const io = new SocketIOServer(server);
 // const PORT = process.env.PORT2 || 8000;
 const SECRET_KEY = process.env.SECRET_KEY || "default_secret_key";
 const PORT = 9000;
 const PORT_SOCKET = 8003;
-const HOST = '192.168.1.19';
+const HOST = '192.168.1.23';
 app.use(cors(
     { origin: "*" }
 ));
@@ -75,7 +76,7 @@ app.get("/verify/:token", async (req: Request<any, {}, any>, res: Response) => {
 
         await user.save();
     } catch (error) {
-        console.log("Erro", error);
+        console.log("Error", error);
         res.status(500).json({ message: "Xác thực email thất bại" });
     }
 })
@@ -161,7 +162,7 @@ app.put("/users/:userId/gender", async (req: Request<IUserParams, {}, IUser>, re
             { new: true }
         )
         if (!user) {
-            return res.status(404).json({ message: "Người dùng không tòn tại" });
+            return res.status(404).json({ message: "Người dùng không tồn tại" });
         }
         res.status(200).json({ message: "Thay đổi giới tính người dùng thành công" });
     } catch (error) {
@@ -210,7 +211,7 @@ app.get("/users/:userId", async (req: Request<IUserParams, {}, any>, res: Respon
 
 //api thêm turnon ở trang bio 
 app.put("/users/:userId/turn-ons/add", async (req: Request<IUserParams, {}, IUser>, res: Response) => {
-    console.log("aip chay");
+    console.log("aip chạy");
     try {
         const { userId } = req.params;
         const { turnOns } = req.body;
@@ -507,8 +508,8 @@ app.post('/delete', async (req, res) => {
     }
 })
 
-
-io.on("connection", (socket: any) => {
+const usersInChatRoom: { [key: string]: string } = {};
+io.on("connection", (socket: CustomSocket) => {
     console.log("Client connected");
 
     socket.on("join", async (userId: string) => {
@@ -548,10 +549,29 @@ io.on("connection", (socket: any) => {
         console.log(`User registered with ID: ${userId}`);
     });
 
+    socket.on("joinChatRoom", ({ userId, receiverId }: { userId: string, receiverId: string }) => {
+        usersInChatRoom[userId] = receiverId;
+    });
+
+    socket.on("leaveChatRoom", ({ userId }: { userId: string }) => {
+        console.log("Thoát");
+
+        // delete usersInChatRoom[userId];
+    });
+
+
+    socket.on("checkReadStatus", ({ senderId, receiverId, messageId }) => {
+        if (usersInChatRoom[receiverId] === senderId) {
+            // Người nhận đang ở trong phòng chat của người gửi, đánh dấu là đã đọc
+            // Cập nhật trạng thái tin nhắn trong database
+            updateMessageStatusToRead(messageId);
+        }
+    });
+
+
     socket.on("disconnect", async () => {
         console.log("Client disconnected");
         const timeOff = new Date();
-
         // Assuming you pass the userId when connecting
         const userId = await socket.userId;
         // const userId = "66b4858d9d832e58957a2043";
@@ -561,3 +581,14 @@ io.on("connection", (socket: any) => {
         io.emit("userStatus", userId, "offline", timeOff);
     });
 });
+
+async function updateMessageStatusToRead(messageId: string) {
+    try {
+        await Chat.updateOne(
+            { _id: messageId },
+            { $set: { isRead: true } }
+        );
+    } catch (error) {
+        console.error("Error updating message status:", error);
+    }
+}

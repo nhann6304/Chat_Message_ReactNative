@@ -1,5 +1,4 @@
 export const calculateOfflineDuration = (lastOfflineTime: string): string => {
-    console.log("Tính thời gian nè ", lastOfflineTime);
     // Chuyển đổi chuỗi thời gian thành đối tượng Date
     const lastOfflineDate = new Date(lastOfflineTime);
     const currentDate = new Date();
